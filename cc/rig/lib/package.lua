@@ -1,6 +1,6 @@
-local fsx = require("rig.lib.fsx")
-local httpc = require("rig.lib.http")
-local security = require("rig.lib.security")
+local fsx = dofile("/rig/bootstrap.lua").require("fsx")
+local httpc = dofile("/rig/bootstrap.lua").require("http")
+local security = dofile("/rig/bootstrap.lua").require("security")
 
 local M = {}
 local LOCK_PATH = "/rig/lock.lua"

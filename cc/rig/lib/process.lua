@@ -1,4 +1,4 @@
-local fsx = require("rig.lib.fsx")
+local fsx = dofile("/rig/bootstrap.lua").require("fsx")
 
 local M = {}
 local PROCESS_FILE = "/rig/processes.lua"

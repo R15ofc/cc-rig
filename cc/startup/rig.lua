@@ -17,7 +17,9 @@ if not ok_bootstrap then
   return
 end
 
-local ok_security, security = pcall(require, "rig.lib.security")
+local ok_security, security = pcall(function()
+  return dofile("/rig/bootstrap.lua").require("security")
+end)
 if not ok_security then
   return
 end

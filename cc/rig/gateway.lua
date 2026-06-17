@@ -1,9 +1,9 @@
 dofile("/rig/bootstrap.lua")
 
-local httpc = require("rig.lib.http")
-local logger = require("rig.lib.logger")
-local rednet_lib = require("rig.lib.rednet")
-local security = require("rig.lib.security")
+local httpc = dofile("/rig/bootstrap.lua").require("http")
+local logger = dofile("/rig/bootstrap.lua").require("logger")
+local rednet_lib = dofile("/rig/bootstrap.lua").require("rednet")
+local security = dofile("/rig/bootstrap.lua").require("security")
 
 local identity = security.load_identity()
 if not identity or not identity.hub_url or not identity.token then

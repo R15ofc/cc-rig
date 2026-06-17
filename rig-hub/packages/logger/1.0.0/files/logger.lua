@@ -1,6 +1,6 @@
 dofile("/rig/bootstrap.lua")
 
-local logger = require("rig.lib.logger")
+local logger = dofile("/rig/bootstrap.lua").require("logger")
 
 local message = table.concat({ ... }, " ")
 if message == "" then

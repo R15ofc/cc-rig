@@ -1,5 +1,5 @@
-local fsx = require("rig.lib.fsx")
-local httpc = require("rig.lib.http")
+local fsx = dofile("/rig/bootstrap.lua").require("fsx")
+local httpc = dofile("/rig/bootstrap.lua").require("http")
 
 local M = {}
 

@@ -1,20 +1,24 @@
 local Bootstrap = {}
-local original_require = require
-local loaded_modules = {}
+local module_cache = rawget(_G, "__rig_module_cache")
+
+if type(module_cache) ~= "table" then
+  module_cache = {}
+  _G.__rig_module_cache = module_cache
+end
 
 local MODULES = {
-  ["rig.lib.fsx"] = "/rig/lib/fsx.lua",
-  ["rig.lib.http"] = "/rig/lib/http.lua",
-  ["rig.lib.json"] = "/rig/lib/json.lua",
-  ["rig.lib.logger"] = "/rig/lib/logger.lua",
-  ["rig.lib.package"] = "/rig/lib/package.lua",
-  ["rig.lib.peripheral"] = "/rig/lib/peripheral.lua",
-  ["rig.lib.process"] = "/rig/lib/process.lua",
-  ["rig.lib.rednet"] = "/rig/lib/rednet.lua",
-  ["rig.lib.security"] = "/rig/lib/security.lua",
-  ["rig.lib.telemetry"] = "/rig/lib/telemetry.lua",
-  ["rig.lib.ui"] = "/rig/lib/ui.lua",
-  ["rig.lib.updater"] = "/rig/lib/updater.lua",
+  fsx = "/rig/lib/fsx.lua",
+  http = "/rig/lib/http.lua",
+  json = "/rig/lib/json.lua",
+  logger = "/rig/lib/logger.lua",
+  package = "/rig/lib/package.lua",
+  peripheral = "/rig/lib/peripheral.lua",
+  process = "/rig/lib/process.lua",
+  rednet = "/rig/lib/rednet.lua",
+  security = "/rig/lib/security.lua",
+  telemetry = "/rig/lib/telemetry.lua",
+  ui = "/rig/lib/ui.lua",
+  updater = "/rig/lib/updater.lua",
 }
 
 local function load_module(module_path)
@@ -25,19 +29,28 @@ local function load_module(module_path)
   return chunk()
 end
 
-local function require_rig_module(module_name)
-  if loaded_modules[module_name] ~= nil then
-    return loaded_modules[module_name]
+local function normalize_name(module_name)
+  module_name = tostring(module_name or "")
+  module_name = module_name:gsub("^rig%.lib%.", "")
+  module_name = module_name:gsub("^lib%.", "")
+  return module_name
+end
+
+function Bootstrap.require(module_name)
+  local normalized = normalize_name(module_name)
+  if module_cache[normalized] ~= nil then
+    return module_cache[normalized]
   end
-  local module_path = MODULES[module_name]
+  local module_path = MODULES[normalized]
   if not module_path then
-    return nil
+    error("unknown RIG module: " .. tostring(module_name), 2)
   end
+  module_cache[normalized] = true
   local module_value = load_module(module_path)
   if module_value == nil then
     module_value = true
   end
-  loaded_modules[module_name] = module_value
+  module_cache[normalized] = module_value
   return module_value
 end
 
@@ -53,27 +66,7 @@ end
 function Bootstrap.install()
   add_package_path("/?.lua")
   add_package_path("/?/init.lua")
-
-  if package and type(package.loaded) == "table" then
-    loaded_modules = package.loaded
-  end
-
-  if package and type(package.preload) == "table" then
-    for module_name in pairs(MODULES) do
-      local preload_name = module_name
-      package.preload[module_name] = function()
-        return require_rig_module(preload_name)
-      end
-    end
-  end
-
-  _G.require = function(module_name)
-    local rig_module = require_rig_module(module_name)
-    if rig_module ~= nil then
-      return rig_module
-    end
-    return original_require(module_name)
-  end
+  _G.rig_require = Bootstrap.require
 end
 
 Bootstrap.install()

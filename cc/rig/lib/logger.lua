@@ -1,5 +1,5 @@
-local fsx = require("rig.lib.fsx")
-local json = require("rig.lib.json")
+local fsx = dofile("/rig/bootstrap.lua").require("fsx")
+local json = dofile("/rig/bootstrap.lua").require("json")
 
 local M = {}
 local LOG_DIR = "/rig/logs"

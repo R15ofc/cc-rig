@@ -1,4 +1,4 @@
-local fsx = require("rig.lib.fsx")
+local fsx = dofile("/rig/bootstrap.lua").require("fsx")
 
 local M = {}
 M.IDENTITY_PATH = "/rig/identity.sec"

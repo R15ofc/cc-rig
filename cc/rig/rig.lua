@@ -1,16 +1,16 @@
 dofile("/rig/bootstrap.lua")
 
-local fsx = require("rig.lib.fsx")
-local httpc = require("rig.lib.http")
-local json = require("rig.lib.json")
-local logger = require("rig.lib.logger")
-local packages = require("rig.lib.package")
-local peripheral_info = require("rig.lib.peripheral")
-local rednet_info = require("rig.lib.rednet")
-local security = require("rig.lib.security")
-local telemetry = require("rig.lib.telemetry")
-local ui = require("rig.lib.ui")
-local updater = require("rig.lib.updater")
+local fsx = dofile("/rig/bootstrap.lua").require("fsx")
+local httpc = dofile("/rig/bootstrap.lua").require("http")
+local json = dofile("/rig/bootstrap.lua").require("json")
+local logger = dofile("/rig/bootstrap.lua").require("logger")
+local packages = dofile("/rig/bootstrap.lua").require("package")
+local peripheral_info = dofile("/rig/bootstrap.lua").require("peripheral")
+local rednet_info = dofile("/rig/bootstrap.lua").require("rednet")
+local security = dofile("/rig/bootstrap.lua").require("security")
+local telemetry = dofile("/rig/bootstrap.lua").require("telemetry")
+local ui = dofile("/rig/bootstrap.lua").require("ui")
+local updater = dofile("/rig/bootstrap.lua").require("updater")
 
 local VERSION = "0.1.0"
 

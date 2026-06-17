@@ -1,7 +1,7 @@
-local fsx = require("rig.lib.fsx")
-local peripheral_info = require("rig.lib.peripheral")
-local process = require("rig.lib.process")
-local rednet_info = require("rig.lib.rednet")
+local fsx = dofile("/rig/bootstrap.lua").require("fsx")
+local peripheral_info = dofile("/rig/bootstrap.lua").require("peripheral")
+local process = dofile("/rig/bootstrap.lua").require("process")
+local rednet_info = dofile("/rig/bootstrap.lua").require("rednet")
 
 local M = {}
 

@@ -1,11 +1,11 @@
 dofile("/rig/bootstrap.lua")
 
-local httpc = require("rig.lib.http")
-local logger = require("rig.lib.logger")
-local packages = require("rig.lib.package")
-local process = require("rig.lib.process")
-local security = require("rig.lib.security")
-local telemetry = require("rig.lib.telemetry")
+local httpc = dofile("/rig/bootstrap.lua").require("http")
+local logger = dofile("/rig/bootstrap.lua").require("logger")
+local packages = dofile("/rig/bootstrap.lua").require("package")
+local process = dofile("/rig/bootstrap.lua").require("process")
+local security = dofile("/rig/bootstrap.lua").require("security")
+local telemetry = dofile("/rig/bootstrap.lua").require("telemetry")
 
 local VERSION = "0.1.0"
 local STOP_FILE = "/rig/agent.stop"

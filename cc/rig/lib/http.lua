@@ -1,4 +1,4 @@
-local json = require("rig.lib.json")
+local json = dofile("/rig/bootstrap.lua").require("json")
 
 local M = {}
 
