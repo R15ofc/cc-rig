@@ -1,4 +1,6 @@
 local Bootstrap = {}
+local original_require = require
+local loaded_modules = {}
 
 local MODULES = {
   ["rig.lib.fsx"] = "/rig/lib/fsx.lua",
@@ -23,6 +25,22 @@ local function load_module(module_path)
   return chunk()
 end
 
+local function require_rig_module(module_name)
+  if loaded_modules[module_name] ~= nil then
+    return loaded_modules[module_name]
+  end
+  local module_path = MODULES[module_name]
+  if not module_path then
+    return nil
+  end
+  local module_value = load_module(module_path)
+  if module_value == nil then
+    module_value = true
+  end
+  loaded_modules[module_name] = module_value
+  return module_value
+end
+
 local function add_package_path(pattern)
   if not package or type(package.path) ~= "string" then
     return
@@ -36,19 +54,28 @@ function Bootstrap.install()
   add_package_path("/?.lua")
   add_package_path("/?/init.lua")
 
-  if not package or type(package.preload) ~= "table" then
-    return
+  if package and type(package.loaded) == "table" then
+    loaded_modules = package.loaded
   end
 
-  for module_name, module_path in pairs(MODULES) do
-    local preload_path = module_path
-    package.preload[module_name] = function()
-      return load_module(preload_path)
+  if package and type(package.preload) == "table" then
+    for module_name in pairs(MODULES) do
+      local preload_name = module_name
+      package.preload[module_name] = function()
+        return require_rig_module(preload_name)
+      end
     end
+  end
+
+  _G.require = function(module_name)
+    local rig_module = require_rig_module(module_name)
+    if rig_module ~= nil then
+      return rig_module
+    end
+    return original_require(module_name)
   end
 end
 
 Bootstrap.install()
 
 return Bootstrap
-

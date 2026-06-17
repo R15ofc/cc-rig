@@ -353,9 +353,18 @@ local function register_if_requested(positional)
     return
   end
   print_step("Registering device")
-  shell.run("/bin/rig.lua", "register", hub_url, token)
+  local register_ok, register_err = pcall(shell.run, "/bin/rig.lua", "register", hub_url, token)
+  if not register_ok then
+    print_error("Registration command failed: " .. tostring(register_err))
+    print("Run manually: /bin/rig.lua register <hub_url> <token>")
+    return
+  end
   print_step("Installing startup hook")
-  shell.run("/bin/rig.lua", "startup", "install")
+  local startup_ok, startup_err = pcall(shell.run, "/bin/rig.lua", "startup", "install")
+  if not startup_ok then
+    print_error("Startup command failed: " .. tostring(startup_err))
+    print("Run manually: /bin/rig.lua startup install")
+  end
 end
 
 local source_url, positional = parse_args({ ... })
