@@ -8,53 +8,11 @@ local rednet_info = require("rig.lib.rednet")
 local security = require("rig.lib.security")
 local telemetry = require("rig.lib.telemetry")
 local ui = require("rig.lib.ui")
+local updater = require("rig.lib.updater")
 
 local VERSION = "0.1.0"
 
 local args = { ... }
-
-local STARTUP_HOOK = [[
-local function append_path(entry)
-  if shell and shell.path and shell.setPath then
-    local current = shell.path()
-    for part in string.gmatch(current, "[^:]+") do
-      if part == entry then
-        return
-      end
-    end
-    shell.setPath(current .. ":" .. entry)
-  end
-end
-
-append_path("/bin")
-
-local ok_security, security = pcall(require, "rig.lib.security")
-if not ok_security then
-  return
-end
-
-local config = security.load_config()
-if config.agent_enabled == false then
-  return
-end
-
-if fs.exists("/rig/agent.lua") and multishell then
-  local tab = multishell.launch({}, "/rig/agent.lua")
-  if tab and multishell.setTitle then
-    multishell.setTitle(tab, "RIG Agent")
-  end
-end
-]]
-
-local ROOT_STARTUP = [[
-if fs.exists("/startup/rig.lua") then
-  if shell then
-    shell.run("/startup/rig.lua")
-  else
-    dofile("/startup/rig.lua")
-  end
-end
-]]
 
 local function print_help()
   print("RIG " .. VERSION)
@@ -71,7 +29,7 @@ local function print_help()
   print("Agent:")
   print("  rig agent start")
   print("  rig agent stop")
-  print("  rig update")
+  print("  rig update [source_url]")
   print("")
   print("Packages:")
   print("  rig search <query>")
@@ -116,15 +74,11 @@ local function start_agent()
 end
 
 local function install_startup()
-  fsx.ensure_dir("/startup")
-  if fs.exists("/startup.lua") then
-    local existing = fsx.read_file("/startup.lua")
-    if existing and not existing:find("/startup/rig.lua", 1, true) and not fs.exists("/startup.lua.rig.bak") then
-      fs.copy("/startup.lua", "/startup.lua.rig.bak")
-    end
+  local ok, err = updater.install_startup()
+  if not ok then
+    ui.fail("Startup hook failed: " .. tostring(err))
+    return
   end
-  fsx.write_file("/startup/rig.lua", STARTUP_HOOK)
-  fsx.write_file("/startup.lua", ROOT_STARTUP)
   local config = security.load_config()
   config.agent_enabled = true
   security.save_config(config)
@@ -265,6 +219,17 @@ local function upgrade_package()
   ui.ok("Upgrade complete")
 end
 
+local function update_core()
+  local ok, result = updater.update(args[2])
+  if not ok then
+    ui.fail(result)
+    return
+  end
+  ui.ok("Updated RIG core from " .. result.source_url)
+  ui.ok("Files updated: " .. tostring(result.count))
+  print("Restart the agent to run the updated code.")
+end
+
 local function print_logs()
   local entries = logger.read(100)
   for _, entry in ipairs(entries) do
@@ -355,7 +320,7 @@ elseif command == "agent" and args[2] == "stop" then
   fsx.write_file("/rig/agent.stop", "stop")
   ui.ok("Stop requested")
 elseif command == "update" then
-  upgrade_package()
+  update_core()
 elseif command == "search" then
   print_search()
 elseif command == "info" then
@@ -382,4 +347,3 @@ else
   ui.fail("Unknown command: " .. tostring(command))
   print_help()
 end
-

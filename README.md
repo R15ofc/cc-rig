@@ -6,7 +6,7 @@ RIG is a CC:Tweaked ecosystem with a FastAPI hub, a static fleet dashboard, and 
 
 - `rig-hub/` - Python 3.12 FastAPI server with SQLite, package registry, dashboard, and Docker files.
 - `cc/` - CC:Tweaked Lua runtime files intended to be copied to a computer's root filesystem.
-- `task.md` - Original project specification.
+- `goal.md` - Original project specification.
 
 ## Quick Start
 
@@ -20,12 +20,13 @@ uvicorn app.main:app --reload
 
 Open `http://127.0.0.1:8000` for the dashboard.
 
-On a CC:Tweaked computer, copy the contents of `cc/` to the root filesystem, then run:
+On a CC:Tweaked computer, install the client with the standalone installer:
 
 ```lua
-/bin/rig.lua register http://127.0.0.1:8000 your-token
-/bin/rig.lua startup install
-/bin/rig.lua agent start
+wget https://raw.githubusercontent.com/R15ofc/cc-rig/main/rig-installer.lua rig-installer.lua
+rig-installer.lua http://127.0.0.1:8000 your-token
 ```
+
+After the first install, update the CC client with `rig update`.
 
 `secret/` is ignored by git so local tokens do not get committed.
