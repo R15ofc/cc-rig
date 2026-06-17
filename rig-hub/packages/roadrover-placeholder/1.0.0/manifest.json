@@ -1,0 +1,16 @@
+{
+  "name": "roadrover-placeholder",
+  "version": "1.0.0",
+  "description": "Placeholder launcher for a future RoadRover application.",
+  "dependencies": [],
+  "files": [
+    {
+      "path": "/rig/apps/roadrover.lua",
+      "source": "files/roadrover.lua"
+    }
+  ],
+  "bin": {
+    "roadrover": "/rig/apps/roadrover.lua"
+  }
+}
+

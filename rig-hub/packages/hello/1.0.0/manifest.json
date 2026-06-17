@@ -1,0 +1,16 @@
+{
+  "name": "hello",
+  "version": "1.0.0",
+  "description": "Hello world package for RIG package manager testing.",
+  "dependencies": [],
+  "files": [
+    {
+      "path": "/rig/apps/hello.lua",
+      "source": "files/hello.lua"
+    }
+  ],
+  "bin": {
+    "hello": "/rig/apps/hello.lua"
+  }
+}
+

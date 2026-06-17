@@ -1,0 +1,385 @@
+local fsx = require("rig.lib.fsx")
+local httpc = require("rig.lib.http")
+local json = require("rig.lib.json")
+local logger = require("rig.lib.logger")
+local packages = require("rig.lib.package")
+local peripheral_info = require("rig.lib.peripheral")
+local rednet_info = require("rig.lib.rednet")
+local security = require("rig.lib.security")
+local telemetry = require("rig.lib.telemetry")
+local ui = require("rig.lib.ui")
+
+local VERSION = "0.1.0"
+
+local args = { ... }
+
+local STARTUP_HOOK = [[
+local function append_path(entry)
+  if shell and shell.path and shell.setPath then
+    local current = shell.path()
+    for part in string.gmatch(current, "[^:]+") do
+      if part == entry then
+        return
+      end
+    end
+    shell.setPath(current .. ":" .. entry)
+  end
+end
+
+append_path("/bin")
+
+local ok_security, security = pcall(require, "rig.lib.security")
+if not ok_security then
+  return
+end
+
+local config = security.load_config()
+if config.agent_enabled == false then
+  return
+end
+
+if fs.exists("/rig/agent.lua") and multishell then
+  local tab = multishell.launch({}, "/rig/agent.lua")
+  if tab and multishell.setTitle then
+    multishell.setTitle(tab, "RIG Agent")
+  end
+end
+]]
+
+local ROOT_STARTUP = [[
+if fs.exists("/startup/rig.lua") then
+  if shell then
+    shell.run("/startup/rig.lua")
+  else
+    dofile("/startup/rig.lua")
+  end
+end
+]]
+
+local function print_help()
+  print("RIG " .. VERSION)
+  print("Usage: rig <command> [args]")
+  print("")
+  print("Core:")
+  print("  rig help")
+  print("  rig version")
+  print("  rig doctor")
+  print("  rig register <hub_url> <token>")
+  print("  rig status")
+  print("  rig startup install")
+  print("")
+  print("Agent:")
+  print("  rig agent start")
+  print("  rig agent stop")
+  print("  rig update")
+  print("")
+  print("Packages:")
+  print("  rig search <query>")
+  print("  rig info <package>")
+  print("  rig install <package>")
+  print("  rig remove <package>")
+  print("  rig list")
+  print("  rig upgrade [package]")
+  print("")
+  print("Diagnostics:")
+  print("  rig logs")
+  print("  rig telemetry")
+  print("  rig peripherals")
+  print("  rig gps")
+  print("")
+  print("Gateway:")
+  print("  rig gateway start")
+  print("  rig gateway status")
+end
+
+local function require_arg(index, name)
+  if args[index] == nil or args[index] == "" then
+    ui.fail(name .. " is required")
+    return nil
+  end
+  return args[index]
+end
+
+local function start_agent()
+  fsx.delete("/rig/agent.stop")
+  if not fs.exists("/rig/agent.lua") then
+    return nil, "/rig/agent.lua not found"
+  end
+  if not multishell then
+    return nil, "multishell is unavailable"
+  end
+  local tab = multishell.launch({}, "/rig/agent.lua")
+  if tab and multishell.setTitle then
+    multishell.setTitle(tab, "RIG Agent")
+  end
+  return true, tab
+end
+
+local function install_startup()
+  fsx.ensure_dir("/startup")
+  if fs.exists("/startup.lua") then
+    local existing = fsx.read_file("/startup.lua")
+    if existing and not existing:find("/startup/rig.lua", 1, true) and not fs.exists("/startup.lua.rig.bak") then
+      fs.copy("/startup.lua", "/startup.lua.rig.bak")
+    end
+  end
+  fsx.write_file("/startup/rig.lua", STARTUP_HOOK)
+  fsx.write_file("/startup.lua", ROOT_STARTUP)
+  local config = security.load_config()
+  config.agent_enabled = true
+  security.save_config(config)
+  ui.ok("Startup hook installed")
+  local ok, result = start_agent()
+  if ok then
+    ui.ok("Agent started in tab " .. tostring(result))
+  else
+    ui.fail("Startup installed, but agent was not started: " .. tostring(result))
+  end
+end
+
+local function register()
+  local hub_url = require_arg(2, "hub_url")
+  local token = require_arg(3, "token")
+  if not hub_url or not token then
+    return
+  end
+  hub_url = hub_url:gsub("/+$", "")
+  local identity = {
+    hub_url = hub_url,
+    token = token,
+    computer_id = os.getComputerID(),
+    label = os.getComputerLabel and os.getComputerLabel() or nil,
+    device_type = security.device_type(),
+    agent_version = VERSION,
+    registered = false,
+  }
+  local result, err = httpc.post(httpc.join(hub_url, "/api/register"), {
+    computer_id = identity.computer_id,
+    label = identity.label,
+    device_type = identity.device_type,
+    agent_version = VERSION,
+    token = token,
+  })
+  if not result then
+    ui.fail("Registration failed: " .. tostring(err))
+    return
+  end
+  identity.registered = true
+  security.save_identity(identity)
+  local config = security.load_config()
+  config.agent_enabled = true
+  security.save_config(config)
+  ui.ok("Registered computer " .. tostring(identity.computer_id))
+end
+
+local function status()
+  local identity = security.load_identity()
+  if not identity then
+    ui.fail("Device is not registered")
+    return
+  end
+  ui.print_kv("Computer ID", identity.computer_id or os.getComputerID())
+  ui.print_kv("Hub URL", identity.hub_url)
+  ui.print_kv("Device type", identity.device_type or security.device_type())
+  ui.print_kv("Registered", tostring(identity.registered == true))
+  ui.print_kv("Agent enabled", tostring(security.load_config().agent_enabled ~= false))
+end
+
+local function doctor()
+  ui.print_kv("HTTP API", http and "enabled" or "disabled")
+  ui.print_kv("Multishell", multishell and "available" or "unavailable")
+  ui.print_kv("Identity", fs.exists(security.IDENTITY_PATH) and "present" or "missing")
+  ui.print_kv("Startup hook", fs.exists("/startup/rig.lua") and "installed" or "missing")
+  ui.print_kv("Root startup", fs.exists("/startup.lua") and "present" or "missing")
+end
+
+local function print_packages()
+  local installed = packages.list()
+  local count = 0
+  for name, item in pairs(installed) do
+    print(name .. " " .. tostring(item.version))
+    count = count + 1
+  end
+  if count == 0 then
+    print("No packages installed.")
+  end
+end
+
+local function print_search()
+  local query = table.concat(args, " ", 2)
+  local result, err = packages.search(query)
+  if not result then
+    ui.fail(err)
+    return
+  end
+  for _, pkg in ipairs(result) do
+    print(pkg.name .. " " .. pkg.version .. " - " .. tostring(pkg.description or ""))
+  end
+end
+
+local function print_info()
+  local name = require_arg(2, "package")
+  if not name then
+    return
+  end
+  local result, err = packages.info(name)
+  if not result then
+    ui.fail(err)
+    return
+  end
+  print(json.encode(result))
+end
+
+local function install_package()
+  local name = require_arg(2, "package")
+  if not name then
+    return
+  end
+  local ok, result = packages.install(name, args[3] or "latest")
+  if not ok then
+    ui.fail(result)
+    return
+  end
+  ui.ok("Installed " .. result.name .. " " .. result.version)
+end
+
+local function remove_package()
+  local name = require_arg(2, "package")
+  if not name then
+    return
+  end
+  local ok, err = packages.remove(name)
+  if not ok then
+    ui.fail(err)
+    return
+  end
+  ui.ok("Removed " .. name)
+end
+
+local function upgrade_package()
+  local ok, result = packages.upgrade(args[2])
+  if not ok then
+    ui.fail(result)
+    return
+  end
+  ui.ok("Upgrade complete")
+end
+
+local function print_logs()
+  local entries = logger.read(100)
+  for _, entry in ipairs(entries) do
+    print("[" .. tostring(entry.ts) .. "] " .. tostring(entry.level) .. " " .. tostring(entry.app) .. ": " .. tostring(entry.message))
+  end
+  if #entries == 0 then
+    print("No logs.")
+  end
+end
+
+local function print_telemetry()
+  print(json.encode(telemetry.collect()))
+end
+
+local function print_peripherals()
+  local list = peripheral_info.list()
+  for _, item in ipairs(list) do
+    print(item.name .. " " .. item.type)
+  end
+  if #list == 0 then
+    print("No peripherals.")
+  end
+end
+
+local function print_gps()
+  if not gps or not gps.locate then
+    ui.fail("GPS API is unavailable")
+    return
+  end
+  local x, y, z = gps.locate(2)
+  if not x then
+    ui.fail("GPS position not found")
+    return
+  end
+  print(tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
+end
+
+local function gateway(command)
+  if command == "start" then
+    if not multishell then
+      ui.fail("multishell is unavailable")
+      return
+    end
+    local tab = multishell.launch({}, "/rig/gateway.lua")
+    if tab and multishell.setTitle then
+      multishell.setTitle(tab, "RIG Gateway")
+    end
+    ui.ok("Gateway started in tab " .. tostring(tab))
+  elseif command == "status" then
+    local status_map = rednet_info.status()
+    local count = 0
+    for modem, open in pairs(status_map) do
+      print(modem .. ": " .. tostring(open))
+      count = count + 1
+    end
+    if count == 0 then
+      print("No rednet modems found.")
+    end
+  else
+    ui.fail("Unknown gateway command")
+  end
+end
+
+local command = args[1] or "help"
+
+if command == "help" then
+  print_help()
+elseif command == "version" then
+  print(VERSION)
+elseif command == "doctor" then
+  doctor()
+elseif command == "register" then
+  register()
+elseif command == "status" then
+  status()
+elseif command == "startup" and args[2] == "install" then
+  install_startup()
+elseif command == "install-startup" then
+  install_startup()
+elseif command == "agent" and args[2] == "start" then
+  local ok, result = start_agent()
+  if ok then
+    ui.ok("Agent started in tab " .. tostring(result))
+  else
+    ui.fail(result)
+  end
+elseif command == "agent" and args[2] == "stop" then
+  fsx.write_file("/rig/agent.stop", "stop")
+  ui.ok("Stop requested")
+elseif command == "update" then
+  upgrade_package()
+elseif command == "search" then
+  print_search()
+elseif command == "info" then
+  print_info()
+elseif command == "install" then
+  install_package()
+elseif command == "remove" then
+  remove_package()
+elseif command == "list" then
+  print_packages()
+elseif command == "upgrade" then
+  upgrade_package()
+elseif command == "logs" then
+  print_logs()
+elseif command == "telemetry" then
+  print_telemetry()
+elseif command == "peripherals" then
+  print_peripherals()
+elseif command == "gps" then
+  print_gps()
+elseif command == "gateway" then
+  gateway(args[2])
+else
+  ui.fail("Unknown command: " .. tostring(command))
+  print_help()
+end
+

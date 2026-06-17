@@ -1,0 +1,16 @@
+{
+  "name": "logger",
+  "version": "1.0.0",
+  "description": "Small test package that writes a local RIG log entry.",
+  "dependencies": [],
+  "files": [
+    {
+      "path": "/rig/apps/logger.lua",
+      "source": "files/logger.lua"
+    }
+  ],
+  "bin": {
+    "logger": "/rig/apps/logger.lua"
+  }
+}
+

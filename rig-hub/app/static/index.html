@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RIG Hub</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>RIG Hub</h1>
+        <p>Runtime Infrastructure Grid</p>
+      </div>
+      <button id="refresh">Refresh</button>
+    </header>
+
+    <nav class="tabs" aria-label="Dashboard sections">
+      <button data-tab="overview" class="active">Overview</button>
+      <button data-tab="devices">Devices</button>
+      <button data-tab="details">Device Details</button>
+      <button data-tab="logs">Logs</button>
+      <button data-tab="commands">Commands</button>
+      <button data-tab="packages">Packages</button>
+      <button data-tab="alerts">Alerts</button>
+    </nav>
+
+    <main>
+      <section id="overview" class="panel active">
+        <div class="stats" id="stats"></div>
+      </section>
+
+      <section id="devices" class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Computer ID</th>
+                <th>Status</th>
+                <th>Label</th>
+                <th>Type</th>
+                <th>Agent</th>
+                <th>Last Seen</th>
+              </tr>
+            </thead>
+            <tbody id="deviceRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="details" class="panel">
+        <div class="split">
+          <aside id="deviceList"></aside>
+          <article>
+            <h2 id="detailTitle">Select a device</h2>
+            <pre id="telemetryBox">{}</pre>
+          </article>
+        </div>
+      </section>
+
+      <section id="logs" class="panel">
+        <div id="logDeviceControls" class="button-row"></div>
+        <pre id="logsBox">No device selected.</pre>
+      </section>
+
+      <section id="commands" class="panel">
+        <div class="form-row">
+          <label>
+            Computer ID
+            <input id="commandComputerId" inputmode="numeric" placeholder="123">
+          </label>
+          <label>
+            Package/App
+            <input id="commandTarget" placeholder="hello">
+          </label>
+        </div>
+        <div class="button-row" id="commandButtons"></div>
+      </section>
+
+      <section id="packages" class="panel">
+        <div id="packageList" class="cards"></div>
+      </section>
+
+      <section id="alerts" class="panel">
+        <div id="alertList" class="cards"></div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+

@@ -1,0 +1,12 @@
+services:
+  rig-hub:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      RIG_DB: /data/rig.db
+      RIG_PACKAGES_DIR: /app/packages
+    volumes:
+      - ./data:/data
+      - ./packages:/app/packages:ro
+
