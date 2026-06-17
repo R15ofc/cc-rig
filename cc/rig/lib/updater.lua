@@ -6,6 +6,7 @@ local M = {}
 M.DEFAULT_SOURCE_URL = "https://raw.githubusercontent.com/R15ofc/cc-rig/main/cc"
 
 M.FILES = {
+  { source = "rig/bootstrap.lua", target = "/rig/bootstrap.lua" },
   { source = "rig/rig.lua", target = "/rig/rig.lua" },
   { source = "rig/agent.lua", target = "/rig/agent.lua" },
   { source = "rig/gateway.lua", target = "/rig/gateway.lua" },
