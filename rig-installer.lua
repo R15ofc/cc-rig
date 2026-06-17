@@ -23,6 +23,7 @@ local FILES = {
 
 local START_MARK = "-- RIG startup hook: begin"
 local END_MARK = "-- RIG startup hook: end"
+local SPINNER = { "/", "-", "\\", "|" }
 
 local ROOT_STARTUP_BLOCK = START_MARK .. "\n" .. [[
 if fs.exists("/startup/rig.lua") then
@@ -33,6 +34,90 @@ if fs.exists("/startup/rig.lua") then
   end
 end
 ]] .. END_MARK .. "\n"
+
+local status_line = nil
+
+local function terminal_width()
+  if term and term.getSize then
+    local width = term.getSize()
+    return width or 51
+  end
+  return 51
+end
+
+local function fit_line(text)
+  local width = terminal_width()
+  text = tostring(text or "")
+  if #text <= width then
+    return text
+  end
+  if width <= 3 then
+    return text:sub(1, width)
+  end
+  return text:sub(1, width - 3) .. "..."
+end
+
+local function write_status(text)
+  if term and term.getCursorPos and term.setCursorPos and term.clearLine and term.write then
+    local _, current_y = term.getCursorPos()
+    status_line = status_line or current_y
+    term.setCursorPos(1, status_line)
+    term.clearLine()
+    term.write(fit_line(text))
+  end
+end
+
+local function finish_status(text)
+  if term and term.getCursorPos and term.setCursorPos then
+    write_status(text)
+    local _, current_y = term.getCursorPos()
+    term.setCursorPos(1, current_y + 1)
+    status_line = nil
+  else
+    print(text)
+  end
+end
+
+local function progress_text(done, total, label, frame)
+  local width = 12
+  local percent = 0
+  if total > 0 then
+    percent = (done / total) * 100
+  end
+  local filled = math.floor((percent / 100) * width + 0.5)
+  if filled < 0 then
+    filled = 0
+  elseif filled > width then
+    filled = width
+  end
+  return string.format(
+    "RIG %s [%s%s] %6.2f%% %s",
+    frame or " ",
+    string.rep("#", filled),
+    string.rep("-", width - filled),
+    percent,
+    label or ""
+  )
+end
+
+local function print_header(source_url)
+  print("RIG Runtime Installer")
+  print("Source: " .. source_url)
+  print("Target: /rig, /bin, /startup")
+  print("")
+end
+
+local function print_step(message)
+  print("==> " .. message)
+end
+
+local function print_ok(message)
+  print("OK  " .. message)
+end
+
+local function print_error(message)
+  print("ERR " .. message)
+end
 
 local function parse_args(raw)
   local source_url = DEFAULT_SOURCE_URL
@@ -92,7 +177,7 @@ local function temp_path(target)
   return TEMP_DIR .. "/" .. target:gsub("^/+", "")
 end
 
-local function download(url)
+local function blocking_download(url)
   if not http then
     return nil, "HTTP API is disabled"
   end
@@ -110,6 +195,62 @@ local function download(url)
     return nil, "HTTP " .. tostring(code)
   end
   return body or ""
+end
+
+local function download(url, label, index, total)
+  if not http then
+    return nil, "HTTP API is disabled"
+  end
+  if not http.request or not os.pullEvent or not os.startTimer then
+    write_status(progress_text(index - 1, total, label, SPINNER[1]))
+    local body, err = blocking_download(url)
+    if body == nil then
+      return nil, err
+    end
+    finish_status(progress_text(index, total, label, " "))
+    return body
+  end
+
+  local request_ok, request_err = http.request(url, nil, { ["Accept"] = "text/plain" })
+  if request_ok == false or request_ok == nil then
+    return nil, request_err or "request failed"
+  end
+
+  local frame = 1
+  local timer_id = os.startTimer(0.12)
+  write_status(progress_text(index - 1, total, label, SPINNER[frame]))
+
+  while true do
+    local event, first, second, third = os.pullEvent()
+    if event == "timer" and first == timer_id then
+      frame = frame + 1
+      if frame > #SPINNER then
+        frame = 1
+      end
+      write_status(progress_text(index - 1, total, label, SPINNER[frame]))
+      timer_id = os.startTimer(0.12)
+    elseif event == "http_success" and first == url then
+      local handle = second
+      local body = handle.readAll()
+      local code = 200
+      if handle.getResponseCode then
+        code = handle.getResponseCode()
+      end
+      handle.close()
+      if code < 200 or code >= 300 then
+        return nil, "HTTP " .. tostring(code)
+      end
+      finish_status(progress_text(index, total, label, " "))
+      return body or ""
+    elseif event == "http_failure" and first == url then
+      local reason = second or "request failed"
+      local handle = third
+      if handle and handle.close then
+        handle.close()
+      end
+      return nil, tostring(reason)
+    end
+  end
 end
 
 local function replace_block(existing)
@@ -167,10 +308,10 @@ local function install_files(source_url)
   end
   fs.makeDir(TEMP_DIR)
 
+  print_step("Downloading core files")
   for index, file in ipairs(FILES) do
     local url = join_url(source_url, file.source)
-    print("Downloading " .. tostring(index) .. "/" .. tostring(#FILES) .. ": " .. file.source)
-    local body, err = download(url)
+    local body, err = download(url, file.source, index, #FILES)
     if body == nil then
       fs.delete(TEMP_DIR)
       return nil, "download failed for " .. file.source .. ": " .. tostring(err)
@@ -182,12 +323,15 @@ local function install_files(source_url)
     end
   end
 
-  for _, file in ipairs(FILES) do
+  print_step("Applying files")
+  for index, file in ipairs(FILES) do
+    write_status(progress_text(index - 1, #FILES, file.target, SPINNER[((index - 1) % #SPINNER) + 1]))
     if fs.exists(file.target) then
       fs.delete(file.target)
     end
     ensure_parent(file.target)
     fs.move(temp_path(file.target), file.target)
+    finish_status(progress_text(index, #FILES, file.target, " "))
   end
   fs.delete(TEMP_DIR)
   return true
@@ -197,34 +341,37 @@ local function register_if_requested(positional)
   local hub_url = positional[1]
   local token = positional[2]
   if not hub_url or not token then
-    print("Next: rig register <hub_url> <token>")
-    print("Then: rig startup install")
+    print("")
+    print("Registration was not requested.")
+    print("Next command: rig register <hub_url> <token>")
+    print("Startup command: rig startup install")
     return
   end
   if not shell then
-    print("Registration needs the shell API. Run /bin/rig.lua register manually.")
+    print("Registration requires the shell API. Run /bin/rig.lua register manually.")
     return
   end
+  print_step("Registering device")
   shell.run("/bin/rig.lua", "register", hub_url, token)
+  print_step("Installing startup hook")
   shell.run("/bin/rig.lua", "startup", "install")
 end
 
 local source_url, positional = parse_args({ ... })
 
-print("RIG installer")
-print("Source: " .. source_url)
+print_header(source_url)
 
 local ok, err = install_files(source_url)
 if not ok then
-  print("Install failed: " .. tostring(err))
+  print_error("Installation failed: " .. tostring(err))
   return
 end
 
+print_step("Installing startup integration")
 install_startup()
 write_default_config()
 append_shell_path("/bin")
 
-print("RIG core installed.")
-print("Future updates: rig update")
+print_ok("RIG core installation complete")
+print("Update command: rig update")
 register_if_requested(positional)
-

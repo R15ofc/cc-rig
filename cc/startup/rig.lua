@@ -12,6 +12,19 @@ end
 
 append_path("/bin")
 
+local function add_rig_package_paths()
+  if not package or type(package.path) ~= "string" then
+    return
+  end
+  for _, pattern in ipairs({ "/?.lua", "/?/init.lua" }) do
+    if not package.path:find(pattern, 1, true) then
+      package.path = package.path .. ";" .. pattern
+    end
+  end
+end
+
+add_rig_package_paths()
+
 local ok_security, security = pcall(require, "rig.lib.security")
 if not ok_security then
   return
@@ -28,4 +41,3 @@ if fs.exists("/rig/agent.lua") and multishell then
     multishell.setTitle(tab, "RIG Agent")
   end
 end
-

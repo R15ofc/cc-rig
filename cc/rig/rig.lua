@@ -1,3 +1,16 @@
+local function add_rig_package_paths()
+  if not package or type(package.path) ~= "string" then
+    return
+  end
+  for _, pattern in ipairs({ "/?.lua", "/?/init.lua" }) do
+    if not package.path:find(pattern, 1, true) then
+      package.path = package.path .. ";" .. pattern
+    end
+  end
+end
+
+add_rig_package_paths()
+
 local fsx = require("rig.lib.fsx")
 local httpc = require("rig.lib.http")
 local json = require("rig.lib.json")
@@ -13,6 +26,9 @@ local updater = require("rig.lib.updater")
 local VERSION = "0.1.0"
 
 local args = { ... }
+local PROGRESS_FRAMES = { "/", "-", "\\", "|" }
+local progress_line = nil
+local progress_frame = 1
 
 local function print_help()
   print("RIG " .. VERSION)
@@ -56,6 +72,84 @@ local function require_arg(index, name)
     return nil
   end
   return args[index]
+end
+
+local function terminal_width()
+  if term and term.getSize then
+    local width = term.getSize()
+    return width or 51
+  end
+  return 51
+end
+
+local function fit_line(text)
+  local width = terminal_width()
+  text = tostring(text or "")
+  if #text <= width then
+    return text
+  end
+  if width <= 3 then
+    return text:sub(1, width)
+  end
+  return text:sub(1, width - 3) .. "..."
+end
+
+local function short_name(path)
+  path = tostring(path or "")
+  return path:match("[^/]+$") or path
+end
+
+local function next_frame()
+  local frame = PROGRESS_FRAMES[progress_frame]
+  progress_frame = progress_frame + 1
+  if progress_frame > #PROGRESS_FRAMES then
+    progress_frame = 1
+  end
+  return frame
+end
+
+local function progress_text(stage, done, total, label, frame)
+  local width = 12
+  local percent = 0
+  if total > 0 then
+    percent = (done / total) * 100
+  end
+  local filled = math.floor((percent / 100) * width + 0.5)
+  if filled < 0 then
+    filled = 0
+  elseif filled > width then
+    filled = width
+  end
+  return string.format(
+    "RIG %s [%s%s] %6.2f%% %s %s",
+    frame or " ",
+    string.rep("#", filled),
+    string.rep("-", width - filled),
+    percent,
+    stage,
+    short_name(label)
+  )
+end
+
+local function write_progress(text)
+  if term and term.getCursorPos and term.setCursorPos and term.clearLine and term.write then
+    local _, current_y = term.getCursorPos()
+    progress_line = progress_line or current_y
+    term.setCursorPos(1, progress_line)
+    term.clearLine()
+    term.write(fit_line(text))
+  end
+end
+
+local function finish_progress(text)
+  if term and term.getCursorPos and term.setCursorPos then
+    write_progress(text)
+    local _, current_y = term.getCursorPos()
+    term.setCursorPos(1, current_y + 1)
+    progress_line = nil
+  else
+    print(text)
+  end
 end
 
 local function start_agent()
@@ -220,12 +314,35 @@ local function upgrade_package()
 end
 
 local function update_core()
-  local ok, result = updater.update(args[2])
+  local source_url = (args[2] and args[2] ~= "") and args[2] or updater.DEFAULT_SOURCE_URL
+  local active_stage = nil
+  print("RIG Core Update")
+  print("Source: " .. source_url)
+  local ok, result = updater.update(source_url, function(stage, done, total, label)
+    if stage ~= active_stage then
+      if active_stage == "download" then
+        finish_progress(progress_text("download", total, total, "complete", " "))
+      elseif active_stage == "apply" then
+        finish_progress(progress_text("apply", total, total, "complete", " "))
+      end
+      active_stage = stage
+      if stage == "download" then
+        print("==> Downloading core files")
+      elseif stage == "apply" then
+        print("==> Applying files")
+      end
+    end
+    if stage == "complete" then
+      finish_progress(progress_text("complete", total, total, label, " "))
+    elseif stage == "download" or stage == "apply" then
+      write_progress(progress_text(stage, done, total, label, next_frame()))
+    end
+  end)
   if not ok then
     ui.fail(result)
     return
   end
-  ui.ok("Updated RIG core from " .. result.source_url)
+  ui.ok("RIG core update complete")
   ui.ok("Files updated: " .. tostring(result.count))
   print("Restart the agent to run the updated code.")
 end

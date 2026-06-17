@@ -82,12 +82,15 @@ function M.install_startup()
   return fsx.write_file("/startup.lua", replace_block(existing))
 end
 
-function M.update(source_url)
+function M.update(source_url, on_progress)
   source_url = (source_url and source_url ~= "") and source_url or M.DEFAULT_SOURCE_URL
   fsx.delete("/rig/.update")
   fsx.ensure_dir("/rig/.update")
 
-  for _, file in ipairs(M.FILES) do
+  for index, file in ipairs(M.FILES) do
+    if on_progress then
+      on_progress("download", index - 1, #M.FILES, file.source)
+    end
     local body, err = httpc.raw_get(join_url(source_url, file.source))
     if body == nil then
       fsx.delete("/rig/.update")
@@ -98,15 +101,27 @@ function M.update(source_url)
       fsx.delete("/rig/.update")
       return nil, "write failed for " .. file.target .. ": " .. tostring(write_err)
     end
+    if on_progress then
+      on_progress("download", index, #M.FILES, file.source)
+    end
   end
 
-  for _, file in ipairs(M.FILES) do
+  for index, file in ipairs(M.FILES) do
+    if on_progress then
+      on_progress("apply", index - 1, #M.FILES, file.target)
+    end
     fsx.delete(file.target)
     ensure_parent(file.target)
     fs.move(temp_path(file.target), file.target)
+    if on_progress then
+      on_progress("apply", index, #M.FILES, file.target)
+    end
   end
   fsx.delete("/rig/.update")
   M.install_startup()
+  if on_progress then
+    on_progress("complete", #M.FILES, #M.FILES, "complete")
+  end
   return true, {
     source_url = source_url,
     count = #M.FILES,

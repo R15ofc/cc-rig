@@ -1,3 +1,16 @@
+local function add_rig_package_paths()
+  if not package or type(package.path) ~= "string" then
+    return
+  end
+  for _, pattern in ipairs({ "/?.lua", "/?/init.lua" }) do
+    if not package.path:find(pattern, 1, true) then
+      package.path = package.path .. ";" .. pattern
+    end
+  end
+end
+
+add_rig_package_paths()
+
 local httpc = require("rig.lib.http")
 local logger = require("rig.lib.logger")
 local rednet_lib = require("rig.lib.rednet")
