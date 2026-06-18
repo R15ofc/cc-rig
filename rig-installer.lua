@@ -343,9 +343,9 @@ local function register_if_requested(positional)
   local token = positional[2]
   if not hub_url or not token then
     print("")
-    print("Registration was not requested.")
-    print("Next command: rig register <hub_url> <token>")
-    print("Startup command: rig startup install")
+    print("Hub registration: optional")
+    print("Install Dock UI: rig os install dock")
+    print("Open Dock UI: dock")
     return
   end
   if not shell then

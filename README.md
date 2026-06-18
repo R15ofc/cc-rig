@@ -39,22 +39,20 @@ Open `http://127.0.0.1:8000` for the dashboard.
 
 ## CC Client Install
 
+RIG is the developer API/tooling layer. It does not need hub registration for the basic DockOS + App Store flow.
+
 ```lua
 wget https://raw.githubusercontent.com/R15ofc/cc-rig/main/rig-installer.lua rig-installer.lua
 rig-installer.lua --source https://raw.githubusercontent.com/R15ofc/cc-rig/main/cc
-rig hub set http://<hub-ip>:8000
 rig os install dock
+dock
 ```
 
-After DockOS is installed, install Luma from the Dock app store:
-
-```lua
-dock store install luma
-```
+Use Dock Store inside the Dock UI for apps. The store can use a CC rednet server when present and falls back to the built-in verified catalog when offline.
 
 After the first install, update RIG with `rig update`.
 
-## Server PC Install
+## RIG Hub Server Install
 
 ```sh
 mkdir -p ~/cc-rig-server
@@ -64,6 +62,49 @@ curl -fsSLO https://raw.githubusercontent.com/R15ofc/cc-rig/main/server/startup-
 chmod +x install-rig-server.sh startup-rig-hub.sh
 ./install-rig-server.sh
 ./startup-rig-hub.sh
+```
+
+Current LAN URL for this machine:
+
+```text
+http://192.168.31.21:8000
+```
+
+Hub registration is optional and only needed for hosted registry/device APIs:
+
+```lua
+rig hub set http://192.168.31.21:8000
+rig register http://192.168.31.21:8000 <token>
+```
+
+## CC Server PC
+
+Use this on an in-game CC PC with a modem for Dock Store and basic Luma pages:
+
+```lua
+wget https://raw.githubusercontent.com/R15ofc/cc-dock/main/dock-installer.lua dock-installer.lua
+dock-installer.lua --source https://raw.githubusercontent.com/R15ofc/cc-dock/main/cc
+dock-server startup install
+dock-server
+```
+
+## Luma Internet Gateway
+
+Use this on a real PC/Mac/Linux host when Luma should fetch normal HTTP/HTTPS pages through one local URL:
+
+```sh
+mkdir -p ~/cc-luma-gateway
+cd ~/cc-luma-gateway
+curl -fsSLO https://raw.githubusercontent.com/R15ofc/cc-luma/main/server/luma-gateway.py
+curl -fsSLO https://raw.githubusercontent.com/R15ofc/cc-luma/main/server/startup-luma-gateway.sh
+chmod +x luma-gateway.py startup-luma-gateway.sh
+./startup-luma-gateway.sh
+```
+
+Then on CC:
+
+```lua
+luma gateway set http://192.168.31.21:9000
 ```
 
 ## Current Direction

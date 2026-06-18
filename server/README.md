@@ -19,9 +19,10 @@ chmod +x install-rig-server.sh startup-rig-hub.sh
 ./startup-rig-hub.sh
 ```
 
-The default hub URL is:
+The script prints the exact local and LAN URLs. On the current server machine:
 
 ```text
-http://<server-ip>:8000
+http://192.168.31.21:8000
 ```
 
+If port `8000` is already used by an existing healthy RIG Hub, the script exits successfully and prints the same URLs instead of starting a second copy.
