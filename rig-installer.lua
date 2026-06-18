@@ -347,9 +347,8 @@ local function register_if_requested(positional)
   local token = positional[2]
   if not hub_url or not token then
     print("")
-    print("Hub: optional")
-    print("Install OS UI: rig os install dock")
-    print("Open OS UI: dock")
+    print("Next: rig os install dock")
+    print("Open: dock")
     return
   end
   if not shell then

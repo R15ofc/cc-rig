@@ -6,7 +6,7 @@ RIG is the developer API layer for building real CC:Tweaked systems:
 - **Luma** - in-game browser, Luma pages, search, and HTTP gateway.
 - **RIG devapi** - reusable APIs for UI, apps, networking, stores, and runtime helpers.
 
-RIG is not hub-first. A hub can exist later as optional infrastructure, but the base system works from raw GitHub files, CC rednet servers, and the Luma gateway.
+RIG is not the UI and not a hub. RIG is the API layer that DockOS and Luma use.
 
 ## Install RIG
 
@@ -73,14 +73,4 @@ Then on CC:
 
 ```lua
 luma gateway set http://192.168.31.21:9000
-```
-
-## Legacy Optional Hub
-
-`rig-hub/` and `server/` are still present for future registry/admin experiments, but they are not required for RIG, DockOS, or Luma.
-
-Current local RIG Hub URL if you intentionally run it:
-
-```text
-http://192.168.31.21:8000
 ```
