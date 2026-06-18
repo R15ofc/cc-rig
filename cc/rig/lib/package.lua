@@ -17,10 +17,17 @@ end
 
 local function identity()
   local current = security.load_identity()
-  if not current or not current.hub_url or not current.token then
-    return nil, "device is not registered"
+  if current and current.hub_url then
+    return current
   end
-  return current
+  local config = security.load_config()
+  if config and config.hub_url then
+    return {
+      hub_url = config.hub_url,
+      token = config.token,
+    }
+  end
+  return nil, "hub URL is not configured"
 end
 
 local function timestamp()

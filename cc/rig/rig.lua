@@ -13,6 +13,8 @@ local ui = dofile("/rig/bootstrap.lua").require("ui")
 local updater = dofile("/rig/bootstrap.lua").require("updater")
 
 local VERSION = "0.1.0"
+local DOCK_INSTALLER_URL = "https://raw.githubusercontent.com/R15ofc/cc-dock/main/dock-installer.lua"
+local DOCK_SOURCE_URL = "https://raw.githubusercontent.com/R15ofc/cc-dock/main/cc"
 
 local args = { ... }
 local PROGRESS_FRAMES = { "/", "-", "\\", "|" }
@@ -28,8 +30,10 @@ local function print_help()
   print("  rig version")
   print("  rig doctor")
   print("  rig register <hub_url> <token>")
+  print("  rig hub set <hub_url>")
   print("  rig status")
   print("  rig startup install")
+  print("  rig os install dock")
   print("")
   print("Agent:")
   print("  rig agent start")
@@ -53,6 +57,14 @@ local function print_help()
   print("Gateway:")
   print("  rig gateway start")
   print("  rig gateway status")
+end
+
+local function write_temp_script(path, body)
+  local ok, err = fsx.write_file(path, body)
+  if not ok then
+    return nil, err
+  end
+  return true
 end
 
 local function require_arg(index, name)
@@ -209,16 +221,24 @@ local function register()
   ui.ok("Registered computer " .. tostring(identity.computer_id))
 end
 
-local function status()
-  local identity = security.load_identity()
-  if not identity then
-    ui.fail("Device is not registered")
+local function set_hub()
+  local hub_url = require_arg(3, "hub_url")
+  if not hub_url then
     return
   end
-  ui.print_kv("Computer ID", identity.computer_id or os.getComputerID())
-  ui.print_kv("Hub URL", identity.hub_url)
-  ui.print_kv("Device type", identity.device_type or security.device_type())
-  ui.print_kv("Registered", tostring(identity.registered == true))
+  local config = security.load_config()
+  config.hub_url = hub_url:gsub("/+$", "")
+  security.save_config(config)
+  ui.ok("Hub URL set to " .. config.hub_url)
+end
+
+local function status()
+  local identity = security.load_identity()
+  local config = security.load_config()
+  ui.print_kv("Computer ID", identity and identity.computer_id or os.getComputerID())
+  ui.print_kv("Hub URL", identity and identity.hub_url or config.hub_url or "not set")
+  ui.print_kv("Device type", identity and identity.device_type or security.device_type())
+  ui.print_kv("Registered", tostring(identity and identity.registered == true or false))
   ui.print_kv("Agent enabled", tostring(security.load_config().agent_enabled ~= false))
 end
 
@@ -336,6 +356,30 @@ local function update_core()
   print("Restart the agent to run the updated code.")
 end
 
+local function install_dock()
+  local installer_url = args[4] or DOCK_INSTALLER_URL
+  local source_url = args[5] or DOCK_SOURCE_URL
+  print("RIG OS Installer")
+  print("Target: DockOS")
+  print("Installer: " .. installer_url)
+  local body, err = httpc.raw_get(installer_url)
+  if not body then
+    ui.fail("DockOS installer download failed: " .. tostring(err))
+    return
+  end
+  local installer_path = "/tmp/dock-installer.lua"
+  local ok, write_err = write_temp_script(installer_path, body)
+  if not ok then
+    ui.fail(write_err)
+    return
+  end
+  if shell then
+    shell.run(installer_path, "--source", source_url)
+  else
+    dofile(installer_path)
+  end
+end
+
 local function print_logs()
   local entries = logger.read(100)
   for _, entry in ipairs(entries) do
@@ -409,6 +453,8 @@ elseif command == "doctor" then
   doctor()
 elseif command == "register" then
   register()
+elseif command == "hub" and args[2] == "set" then
+  set_hub()
 elseif command == "status" then
   status()
 elseif command == "startup" and args[2] == "install" then
@@ -427,6 +473,8 @@ elseif command == "agent" and args[2] == "stop" then
   ui.ok("Stop requested")
 elseif command == "update" then
   update_core()
+elseif command == "os" and args[2] == "install" and args[3] == "dock" then
+  install_dock()
 elseif command == "search" then
   print_search()
 elseif command == "info" then
