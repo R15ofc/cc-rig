@@ -1,85 +1,53 @@
-# RIG Platform
+# RIG Dev API
 
-RIG is becoming a CC:Tweaked developer platform.
+RIG is the developer API layer for building real CC:Tweaked systems:
 
-The long-term platform has three systems:
+- **DockOS** - Advanced Computer OS shell, windows, app store, apps.
+- **Luma** - in-game browser, Luma pages, search, and HTTP gateway.
+- **RIG devapi** - reusable APIs for UI, apps, networking, stores, and runtime helpers.
 
-- **RIG** - developer API, package tooling, SDKs, hub services, and package registry.
-- **Dock** - OS layer for Pocket Computers and Advanced Computers.
-- **Luma** - in-game internet layer with browser, domains, search, and site builder.
+RIG is not hub-first. A hub can exist later as optional infrastructure, but the base system works from raw GitHub files, CC rednet servers, and the Luma gateway.
 
-Repositories:
+## Install RIG
 
-- `R15ofc/cc-rig` - RIG core and hub.
-- `R15ofc/cc-dock` - DockOS.
-- `R15ofc/cc-luma` - Luma Browser.
-
-The current server/client code remains in this repository as the foundation.
-
-## Layout
-
-- `rig-hub/` - Python 3.12 FastAPI server with SQLite, package registry, dashboard, and Docker files.
-- `cc/` - CC:Tweaked Lua runtime files intended to be copied to a computer's root filesystem.
-- `systems/` - planned RIG, Dock, Luma, and shared platform specs.
-- `docs/` - roadmap and package trust policy.
-- `PLATFORM.md` - product direction and trust model.
-- `goal.md` - Original project specification.
-
-## Hub Quick Start
-
-```sh
-cd rig-hub
-python3.12 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-Open `http://127.0.0.1:8000` for the dashboard.
-
-## CC Client Install
-
-RIG is the developer API/tooling layer. It does not need hub registration for the basic DockOS + App Store flow.
+Run on a CC:Tweaked Advanced Computer:
 
 ```lua
 wget https://raw.githubusercontent.com/R15ofc/cc-rig/main/rig-installer.lua rig-installer.lua
 rig-installer.lua --source https://raw.githubusercontent.com/R15ofc/cc-rig/main/cc
+rig api
+```
+
+## Install the OS UI
+
+```lua
 rig os install dock
 dock
 ```
 
-Use Dock Store inside the Dock UI for apps. The store can use a CC rednet server when present and falls back to the built-in verified catalog when offline.
+Dock uses the RIG devapi when present and falls back safely when installed directly.
 
-After the first install, update RIG with `rig update`.
+## RIG devapi
 
-## RIG Hub Server Install
+Installed modules:
 
-```sh
-mkdir -p ~/cc-rig-server
-cd ~/cc-rig-server
-curl -fsSLO https://raw.githubusercontent.com/R15ofc/cc-rig/main/server/install-rig-server.sh
-curl -fsSLO https://raw.githubusercontent.com/R15ofc/cc-rig/main/server/startup-rig-hub.sh
-chmod +x install-rig-server.sh startup-rig-hub.sh
-./install-rig-server.sh
-./startup-rig-hub.sh
-```
+- `/rig/devapi/ui.lua` - Advanced PC UI primitives: topbars, cards, buttons, modals, hitboxes.
+- `/rig/devapi/app.lua` - app install/run helpers, hidden installer execution, file helpers.
+- `/rig/devapi/net.lua` - Luma gateway, HTTP JSON, rednet request helpers.
+- `/rig/devapi/store.lua` - local/offline catalog and trust labels.
 
-Current LAN URL for this machine:
-
-```text
-http://192.168.31.21:8000
-```
-
-Hub registration is optional and only needed for hosted registry/device APIs:
+CLI:
 
 ```lua
-rig hub set http://192.168.31.21:8000
-rig register http://192.168.31.21:8000 <token>
+rig api
+rig doctor
+rig update
+rig os install dock
 ```
 
 ## CC Server PC
 
-Use this on an in-game CC PC with a modem for Dock Store and basic Luma pages:
+Use this on an in-game CC PC with a modem for Dock Store and Luma pages:
 
 ```lua
 wget https://raw.githubusercontent.com/R15ofc/cc-dock/main/dock-installer.lua dock-installer.lua
@@ -107,15 +75,12 @@ Then on CC:
 luma gateway set http://192.168.31.21:9000
 ```
 
-## Current Direction
+## Legacy Optional Hub
 
-RIG should move from monitoring-first toward developer tooling:
+`rig-hub/` and `server/` are still present for future registry/admin experiments, but they are not required for RIG, DockOS, or Luma.
 
-- package upload from GitHub/gist;
-- package verification status;
-- warnings for unreviewed packages;
-- hub-side package removal/blocking;
-- Dock app store integration;
-- Luma publishing and discovery.
+Current local RIG Hub URL if you intentionally run it:
 
-`secret/` is ignored by git so local tokens do not get committed.
+```text
+http://192.168.31.21:8000
+```

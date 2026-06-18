@@ -12,7 +12,7 @@ local telemetry = dofile("/rig/bootstrap.lua").require("telemetry")
 local ui = dofile("/rig/bootstrap.lua").require("ui")
 local updater = dofile("/rig/bootstrap.lua").require("updater")
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 local DOCK_INSTALLER_URL = "https://raw.githubusercontent.com/R15ofc/cc-dock/main/dock-installer.lua"
 local DOCK_SOURCE_URL = "https://raw.githubusercontent.com/R15ofc/cc-dock/main/cc"
 
@@ -22,43 +22,27 @@ local progress_line = nil
 local progress_frame = 1
 
 local function print_help()
-  print("RIG " .. VERSION)
-  print("Usage: rig <command> [args]")
-  print("")
-  print("Core:")
-  print("  rig help")
-  print("  rig version")
-  print("  rig doctor")
-  print("  rig status")
-  print("  rig startup install")
-  print("  rig os install dock")
-  print("")
-  print("Agent:")
-  print("  rig agent start")
-  print("  rig agent stop")
-  print("  rig update [source_url]")
-  print("")
-  print("Packages:")
-  print("  rig search <query>")
-  print("  rig info <package>")
-  print("  rig install <package>")
-  print("  rig remove <package>")
-  print("  rig list")
-  print("  rig upgrade [package]")
-  print("")
-  print("Diagnostics:")
-  print("  rig logs")
-  print("  rig telemetry")
-  print("  rig peripherals")
-  print("  rig gps")
-  print("")
-  print("Gateway:")
-  print("  rig gateway start")
-  print("  rig gateway status")
-  print("")
-  print("Optional Hub:")
-  print("  rig hub set <hub_url>")
-  print("  rig register <hub_url> <token>")
+  ui.title("RIG Developer Kit", VERSION)
+  ui.section("Core")
+  ui.command("rig api", "show dev API modules")
+  ui.command("rig doctor", "check runtime")
+  ui.command("rig status", "show local state")
+  ui.command("rig update", "update RIG files")
+  ui.command("rig startup install", "enable startup hook")
+  ui.command("rig os install dock", "install DockOS UI")
+  ui.section("Packages")
+  ui.command("rig search <query>", "find packages")
+  ui.command("rig info <name>", "package details")
+  ui.command("rig install <name>", "install package")
+  ui.command("rig remove <name>", "remove package")
+  ui.command("rig list", "installed packages")
+  ui.section("Device")
+  ui.command("rig agent start", "start background agent")
+  ui.command("rig gateway start", "start rednet gateway")
+  ui.command("rig peripherals", "list peripherals")
+  ui.section("Optional Hub")
+  ui.command("rig hub set <url>", "set hub URL")
+  ui.command("rig register <url> <token>", "register device")
 end
 
 local function write_temp_script(path, body)
@@ -177,15 +161,10 @@ local function install_startup()
     return
   end
   local config = security.load_config()
-  config.agent_enabled = true
+  config.agent_enabled = false
   security.save_config(config)
   ui.ok("Startup hook installed")
-  local ok, result = start_agent()
-  if ok then
-    ui.ok("Agent started in tab " .. tostring(result))
-  else
-    ui.fail("Startup installed, but agent was not started: " .. tostring(result))
-  end
+  ui.ok("Dev API ready; agent stays disabled")
 end
 
 local function register()
@@ -218,9 +197,10 @@ local function register()
   identity.registered = true
   security.save_identity(identity)
   local config = security.load_config()
-  config.agent_enabled = true
+  config.agent_enabled = false
   security.save_config(config)
   ui.ok("Registered computer " .. tostring(identity.computer_id))
+  ui.ok("Agent remains disabled until `rig agent start`")
 end
 
 local function set_hub()
@@ -238,16 +218,29 @@ local function status()
   local identity = security.load_identity()
   local config = security.load_config()
   ui.print_kv("Computer ID", identity and identity.computer_id or os.getComputerID())
-  ui.print_kv("Hub URL", identity and identity.hub_url or config.hub_url or "not set")
+  ui.print_kv("Dev API", fs.exists("/rig/devapi/ui.lua") and "installed" or "missing")
   ui.print_kv("Device type", identity and identity.device_type or security.device_type())
-  ui.print_kv("Registered", tostring(identity and identity.registered == true or false))
-  ui.print_kv("Agent enabled", tostring(security.load_config().agent_enabled ~= false))
+  ui.print_kv("Agent", security.load_config().agent_enabled ~= false and "enabled" or "disabled")
+  ui.print_kv("Optional hub", identity and identity.hub_url or config.hub_url or "not set")
+end
+
+local function api_info()
+  ui.title("RIG Dev API", VERSION)
+  ui.section("Modules")
+  ui.command("devapi.ui", "Advanced PC UI toolkit")
+  ui.command("devapi.app", "app install/run helpers")
+  ui.command("devapi.net", "gateway, HTTP, rednet helpers")
+  ui.command("devapi.store", "catalog and trust helpers")
+  ui.section("Use")
+  ui.command("rig os install dock", "install OS UI built on RIG")
+  ui.command("rig update", "update dev API files")
 end
 
 local function doctor()
   ui.print_kv("HTTP API", http and "enabled" or "disabled")
   ui.print_kv("Multishell", multishell and "available" or "unavailable")
-  ui.print_kv("Identity", fs.exists(security.IDENTITY_PATH) and "present" or "missing")
+  ui.print_kv("Dev API UI", fs.exists("/rig/devapi/ui.lua") and "installed" or "missing")
+  ui.print_kv("Dev API Net", fs.exists("/rig/devapi/net.lua") and "installed" or "missing")
   ui.print_kv("Startup hook", fs.exists("/startup/rig.lua") and "installed" or "missing")
   ui.print_kv("Root startup", fs.exists("/startup.lua") and "present" or "missing")
 end
@@ -449,6 +442,8 @@ local command = args[1] or "help"
 
 if command == "help" then
   print_help()
+elseif command == "api" or command == "devapi" then
+  api_info()
 elseif command == "version" then
   print(VERSION)
 elseif command == "doctor" then

@@ -19,6 +19,10 @@ local MODULES = {
   telemetry = "/rig/lib/telemetry.lua",
   ui = "/rig/lib/ui.lua",
   updater = "/rig/lib/updater.lua",
+  ["devapi.app"] = "/rig/devapi/app.lua",
+  ["devapi.net"] = "/rig/devapi/net.lua",
+  ["devapi.store"] = "/rig/devapi/store.lua",
+  ["devapi.ui"] = "/rig/devapi/ui.lua",
 }
 
 local function load_module(module_path)
@@ -31,6 +35,7 @@ end
 
 local function normalize_name(module_name)
   module_name = tostring(module_name or "")
+  module_name = module_name:gsub("^rig%.devapi%.", "devapi.")
   module_name = module_name:gsub("^rig%.lib%.", "")
   module_name = module_name:gsub("^lib%.", "")
   return module_name

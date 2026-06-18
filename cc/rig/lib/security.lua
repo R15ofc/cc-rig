@@ -16,7 +16,7 @@ end
 function M.load_config()
   local config = fsx.load_table(M.CONFIG_PATH, {})
   if config.agent_enabled == nil then
-    config.agent_enabled = true
+    config.agent_enabled = false
   end
   return config
 end
@@ -57,4 +57,3 @@ function M.validate_rednet(message, token)
 end
 
 return M
-

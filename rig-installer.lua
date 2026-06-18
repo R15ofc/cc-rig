@@ -6,6 +6,10 @@ local FILES = {
   { source = "rig/rig.lua", target = "/rig/rig.lua" },
   { source = "rig/agent.lua", target = "/rig/agent.lua" },
   { source = "rig/gateway.lua", target = "/rig/gateway.lua" },
+  { source = "rig/devapi/app.lua", target = "/rig/devapi/app.lua" },
+  { source = "rig/devapi/net.lua", target = "/rig/devapi/net.lua" },
+  { source = "rig/devapi/store.lua", target = "/rig/devapi/store.lua" },
+  { source = "rig/devapi/ui.lua", target = "/rig/devapi/ui.lua" },
   { source = "rig/lib/fsx.lua", target = "/rig/lib/fsx.lua" },
   { source = "rig/lib/http.lua", target = "/rig/lib/http.lua" },
   { source = "rig/lib/json.lua", target = "/rig/lib/json.lua" },
@@ -102,9 +106,9 @@ local function progress_text(done, total, label, frame)
 end
 
 local function print_header(source_url)
-  print("RIG Runtime Installer")
+  print("RIG Dev API Installer")
   print("Source: " .. source_url)
-  print("Target: /rig, /bin, /startup")
+  print("Target: /rig/devapi, /rig/lib, /bin")
   print("")
 end
 
@@ -343,9 +347,9 @@ local function register_if_requested(positional)
   local token = positional[2]
   if not hub_url or not token then
     print("")
-    print("Hub registration: optional")
-    print("Install Dock UI: rig os install dock")
-    print("Open Dock UI: dock")
+    print("Hub: optional")
+    print("Install OS UI: rig os install dock")
+    print("Open OS UI: dock")
     return
   end
   if not shell then
@@ -382,6 +386,6 @@ install_startup()
 write_default_config()
 append_shell_path("/bin")
 
-print_ok("RIG core installation complete")
+print_ok("RIG dev API installation complete")
 print("Update command: rig update")
 register_if_requested(positional)
